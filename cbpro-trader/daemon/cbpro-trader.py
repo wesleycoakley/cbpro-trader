@@ -86,7 +86,10 @@ class CBProTrader(object):
                     self.trade_period_list[cur_period['product']] = []
                 self.trade_period_list[cur_period['product']].append(new_period)
         max_slippage = Decimal(str(self.config['max_slippage']))
-        self.trade_engine = engine.TradeEngine(auth_client, product_list=self.product_list, fiat=fiat_currency, is_live=self.config['live'], max_slippage=max_slippage)
+        max_commit = Decimal(str(self.config['max_commit']))
+        self.trade_engine = engine.TradeEngine(auth_client, \
+            product_list=self.product_list, fiat=fiat_currency, \
+            is_live=self.config['live'], max_slippage=max_slippage, max_commit=max_commit)
         self.cbpro_websocket = engine.TradeAndHeartbeatWebsocket(fiat=fiat_currency, sandbox=self.config['sandbox'])
         self.cbpro_websocket.start()
         self.indicator_period_list[0].verbose_heartbeat = True

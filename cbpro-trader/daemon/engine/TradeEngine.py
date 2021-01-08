@@ -7,7 +7,7 @@ from decimal import Decimal, ROUND_DOWN
 from .Product import Product
 
 class TradeEngine():
-    def __init__(self, auth_client, product_list=['BTC-USD', 'ETH-USD', 'LTC-USD'], fiat='USD', is_live=False, max_slippage=Decimal('0.10')):
+    def __init__(self, auth_client, product_list=['BTC-USD', 'ETH-USD', 'LTC-USD'], fiat='USD', is_live=False, max_slippage=Decimal('0.10'), max_commit=Decimal('1.0')):
         self.logger = logging.getLogger('trader-logger')
         self.error_logger = logging.getLogger('error-logger')
         self.auth_client = auth_client
@@ -29,6 +29,7 @@ class TradeEngine():
         self.init_available_products()
         self.last_balance_update = time.time()
         self.max_slippage = max_slippage
+        self.max_commit = max_commit
         self.update_order_thread = threading.Thread(target=self.update_orders, name='update_orders')
         self.update_order_thread.start()
 
@@ -137,7 +138,8 @@ class TradeEngine():
         last_order_update = 0
         starting_price = product.order_book.get_ask() - Decimal(product.quote_increment)
         try:
-            ret = self.place_buy(product=product, partial='0.5')
+            half_commit = self.max_commit / 2
+            ret = self.place_buy(product=product, partial=half_commit)
             bid = ret.get('price')
             amount = self.get_quoted_currency_from_product_id(product.product_id)
             while product.buy_flag and (amount >= Decimal(product.min_size) or len(product.open_orders) > 0):
@@ -147,7 +149,7 @@ class TradeEngine():
                     product.order_in_progress = False
                     return
                 if ret.get('status') == 'rejected' or ret.get('status') == 'done' or ret.get('message') == 'NotFound':
-                    ret = self.place_buy(product=product, partial='0.5')
+                    ret = self.place_buy(product=product, partial=half_commit)
                     bid = ret.get('price')
                 elif not bid or Decimal(bid) < product.order_book.get_ask() - Decimal(product.quote_increment):
                     if len(product.open_orders) > 0:
